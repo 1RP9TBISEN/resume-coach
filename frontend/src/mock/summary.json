@@ -1,0 +1,19 @@
+{
+  "overall_score": 84,
+  "readiness": "ready",
+  "top_strengths": [
+    "Articulates complex React rendering and state concepts with high clarity and technical accuracy",
+    "Maintains a user-first mindset when reasoning through error handling and latency mitigations",
+    "Structures behavioral responses using STAR format with actionable outcomes"
+  ],
+  "focus_areas": [
+    "Consistently back up engineering decisions with quantitative metrics (e.g. % performance gain, milliseconds shaved)",
+    "Deepen familiarity with enterprise production toolchains including strict TypeScript and Jest/RTL unit testing",
+    "Elaborate on collaborative trade-offs during cross-functional agile sprints"
+  ],
+  "next_steps": [
+    "Add 2-3 unit and snapshot tests to your top React project to address the testing requirement",
+    "Adopt the suggested resume rewrites to emphasize measurable business impact for application screenings",
+    "Apply directly to matched roles on LinkedIn, Naukri, and Internshala while keeping answers structured in STAR format"
+  ]
+}
