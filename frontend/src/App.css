@@ -25,6 +25,13 @@
 }
 
 /* ==========================================================================
+   Print Header (Visible ONLY during print)
+   ========================================================================== */
+.print-only-header {
+  display: none;
+}
+
+/* ==========================================================================
    Header Component
    ========================================================================== */
 .app-header {
@@ -256,6 +263,11 @@
   opacity: 0.55;
   cursor: not-allowed;
   transform: none;
+}
+
+.btn-print-report {
+  font-size: 0.85rem;
+  padding: 0.55rem 1rem;
 }
 
 .btn-back {
@@ -998,7 +1010,7 @@
 }
 
 /* ==========================================================================
-   Screen 3: Results Screen
+   Screen 3: Results Screen & JD Keyword Highlighting
    ========================================================================== */
 .results-hero-card {
   background: var(--bg-card);
@@ -1240,6 +1252,160 @@
 
 .missing-note {
   font-style: italic;
+}
+
+/* ==========================================================================
+   Feature 1: JD Keyword Highlighting Collapsible Card
+   ========================================================================== */
+.jd-keyword-section {
+  margin-top: 1.5rem;
+}
+
+.jd-keyword-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: all var(--trans-fast);
+}
+
+.jd-keyword-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.15rem 1.25rem;
+  background: var(--bg-card);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  transition: background var(--trans-fast);
+}
+
+.jd-keyword-toggle:hover {
+  background: var(--bg-subtle);
+}
+
+.jd-keyword-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.jd-keyword-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.jd-keyword-header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.jd-keyword-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.legend-matched {
+  color: var(--success);
+}
+
+.legend-partial {
+  color: var(--warning);
+}
+
+.legend-missing {
+  color: var(--danger);
+}
+
+.legend-divider {
+  color: var(--text-muted);
+}
+
+.jd-keyword-content {
+  border-top: 1px solid var(--border);
+  padding: 1.25rem;
+  background: var(--bg-subtle);
+}
+
+.jd-keyword-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  font-style: italic;
+}
+
+.jd-highlighted-text {
+  font-size: 0.875rem;
+  line-height: 1.65;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  font-family: inherit;
+}
+
+/* Keyword Highlights (Mark tags) */
+.jd-hl-tag {
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+  margin: 0 0.1rem;
+  font-weight: 700;
+  cursor: help;
+  transition: all var(--trans-fast);
+  display: inline;
+}
+
+.jd-hl-matched {
+  background-color: var(--success-bg);
+  color: var(--success);
+  border-bottom: 2px solid var(--success);
+}
+
+.jd-hl-matched:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 8px var(--success-bg);
+}
+
+.jd-hl-partial {
+  background-color: var(--warning-bg);
+  color: var(--warning);
+  border-bottom: 2px solid var(--warning);
+}
+
+.jd-hl-partial:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 8px var(--warning-bg);
+}
+
+.jd-hl-missing {
+  background-color: var(--danger-bg);
+  color: var(--danger);
+  border-bottom: 2px solid var(--danger);
+}
+
+.jd-hl-missing:hover {
+  filter: brightness(1.1);
+  box-shadow: 0 0 8px var(--danger-bg);
 }
 
 /* Gaps Grid */
@@ -2463,5 +2629,112 @@
   }
   50% {
     transform: translateY(-3px);
+  }
+}
+
+/* ==========================================================================
+   Feature 2: Download Report (@media print)
+   ========================================================================== */
+@media print {
+  body,
+  #root,
+  .app-layout,
+  .app-main {
+    background: #ffffff !important;
+    color: #111827 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide navigation, buttons, controls during print */
+  .no-print,
+  .app-header,
+  .app-footer,
+  .btn-back,
+  .btn-primary,
+  .btn-secondary,
+  .btn-copy,
+  .results-cta-buttons,
+  .bottom-cta-banner,
+  .bottom-cta-actions,
+  .voice-mode-prompt-banner,
+  .voice-active-header,
+  .voice-controls-row,
+  .scorecard-actions-row,
+  .theme-toggle-btn {
+    display: none !important;
+  }
+
+  /* Print Header styling */
+  .print-only-header {
+    display: block !important;
+    margin-bottom: 2rem !important;
+    padding-bottom: 1rem !important;
+    border-bottom: 2px solid #111827 !important;
+  }
+
+  .print-header-top {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: baseline !important;
+  }
+
+  .print-title {
+    font-size: 2rem !important;
+    font-weight: 800 !important;
+    color: #111827 !important;
+    margin: 0 !important;
+  }
+
+  .print-date {
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    color: #4b5563 !important;
+  }
+
+  .print-subtitle {
+    font-size: 1rem !important;
+    color: #4b5563 !important;
+    margin-top: 0.25rem !important;
+  }
+
+  /* Prevent page breaks inside cards */
+  .results-hero-card,
+  .job-card,
+  .rewrite-card,
+  .gap-card,
+  .scorecard-section-card,
+  .jd-keyword-card,
+  .skills-status-columns,
+  .scorecard-hero-card {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: none !important;
+    margin-bottom: 1.5rem !important;
+    background: #ffffff !important;
+  }
+
+  /* Stack before / after rewrites vertically in print */
+  .rewrite-columns {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Keep collapsible card content expanded in print */
+  .jd-keyword-content {
+    display: block !important;
+    background: #ffffff !important;
+  }
+
+  .better-answer-content {
+    display: block !important;
   }
 }

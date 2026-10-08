@@ -28,6 +28,10 @@ export default function ScorecardScreen({
     next_steps = []
   } = summary;
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   // Readiness badge config
   const readinessConfig = {
     ready: {
@@ -63,8 +67,23 @@ export default function ScorecardScreen({
     }
   }, [wasVoiceMode, overall_score, currentReadiness.label]);
 
+  const formattedDate = new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
   return (
     <div className="screen-container fade-in">
+      {/* Print Document Header (Visible only in Print mode) */}
+      <div className="print-only-header">
+        <div className="print-header-top">
+          <h1 className="print-title">ResumeCoach Report — Mock Interview Scorecard</h1>
+          <span className="print-date">{formattedDate}</span>
+        </div>
+        <p className="print-subtitle">Comprehensive Technical Interview Assessment & Readiness Feedback</p>
+      </div>
+
       <div className="scorecard-hero-card">
         <div className="scorecard-hero-center">
           <ScoreRing score={overall_score} size={180} strokeWidth={14} label="Overall Score" />
@@ -79,7 +98,11 @@ export default function ScorecardScreen({
         </div>
 
         {/* Action Buttons */}
-        <div className="scorecard-actions-row">
+        <div className="scorecard-actions-row no-print">
+          <button type="button" className="btn-secondary btn-print-report" onClick={handlePrint}>
+            <span>📄 Download Report</span>
+          </button>
+
           <button type="button" className="btn-secondary" onClick={onRetryInterview}>
             <RotateCcw size={16} />
             <span>Retry Interview</span>

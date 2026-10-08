@@ -393,6 +393,7 @@ export default function App() {
         {currentView === "results" && (
           <ResultsScreen
             analysis={analysis}
+            jd={jd}
             onStartInterview={handleStartInterview}
             onBack={() => setCurrentView(previousView === "jobs" ? "jobs" : "input")}
           />
