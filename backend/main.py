@@ -98,11 +98,14 @@ def extract_resume_text(resume_file: Optional[UploadFile], resume_text: Optional
 
 @app.get("/api/health")
 def health():
+    llm_order = os.getenv("LLM_ORDER", "groq,gemini").split(",")
     providers = []
-    if os.getenv("GEMINI_API_KEY"):
-        providers.append("gemini")
-    if os.getenv("GROQ_API_KEY"):
-        providers.append("groq")
+    for p in llm_order:
+        p = p.strip().lower()
+        if p == "gemini" and os.getenv("GEMINI_API_KEY"):
+            providers.append("gemini")
+        elif p == "groq" and os.getenv("GROQ_API_KEY"):
+            providers.append("groq")
     return {"ok": True, "providers": providers}
 
 @app.post("/api/analyze")

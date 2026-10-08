@@ -80,55 +80,65 @@ def generate_json(system: str, user: str, temperature: float = 0.4) -> Dict[str,
     gemini_client = get_gemini_client()
     groq_client = get_groq_client()
 
-    if not gemini_client and not groq_client:
+    llm_order = os.getenv("LLM_ORDER", "groq,gemini").split(",")
+    providers = []
+    for p in llm_order:
+        p = p.strip().lower()
+        if p == "gemini" and gemini_client:
+            providers.append("gemini")
+        elif p == "groq" and groq_client:
+            providers.append("groq")
+
+    if not providers:
         raise LLMError("No LLM clients configured. Check API keys.")
 
     last_exception = None
 
-    if gemini_client:
-        model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
-        provider_system = system
-        for json_attempt in range(2):
-            try:
-                raw = _call_gemini(gemini_client, model, provider_system, user, temperature)
-                result = _parse_json(raw)
-                logger.info(f"Answered by Gemini ({model})")
-                return result
-            except json.JSONDecodeError as e:
-                if json_attempt == 0:
-                    logger.warning(f"Gemini returned invalid JSON: {e}. Retrying with strict JSON prompt.")
-                    provider_system += "\nReturn ONLY valid JSON."
-                    continue
-                else:
-                    logger.exception(f"Gemini failed JSON parsing ({model}): {e}")
+    for provider in providers:
+        if provider == "gemini":
+            model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+            provider_system = system
+            for json_attempt in range(2):
+                try:
+                    raw = _call_gemini(gemini_client, model, provider_system, user, temperature)
+                    result = _parse_json(raw)
+                    logger.info(f"Answered by Gemini ({model})")
+                    return result
+                except json.JSONDecodeError as e:
+                    if json_attempt == 0:
+                        logger.warning(f"Gemini returned invalid JSON: {e}. Retrying with strict JSON prompt.")
+                        provider_system += "\nReturn ONLY valid JSON."
+                        continue
+                    else:
+                        logger.exception(f"Gemini failed JSON parsing ({model}): {e}")
+                        last_exception = e
+                        break
+                except Exception as e:
+                    logger.exception(f"Gemini failed ({model}): {e}")
                     last_exception = e
                     break
-            except Exception as e:
-                logger.exception(f"Gemini failed ({model}): {e}")
-                last_exception = e
-                break
-
-    if groq_client:
-        model = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
-        provider_system = system
-        for json_attempt in range(2):
-            try:
-                raw = _call_groq(groq_client, model, provider_system, user, temperature)
-                result = _parse_json(raw)
-                logger.info(f"Answered by Groq ({model})")
-                return result
-            except json.JSONDecodeError as e:
-                if json_attempt == 0:
-                    logger.warning(f"Groq returned invalid JSON: {e}. Retrying with strict JSON prompt.")
-                    provider_system += "\nReturn ONLY valid JSON."
-                    continue
-                else:
-                    logger.exception(f"Groq failed JSON parsing ({model}): {e}")
+                    
+        elif provider == "groq":
+            model = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+            provider_system = system
+            for json_attempt in range(2):
+                try:
+                    raw = _call_groq(groq_client, model, provider_system, user, temperature)
+                    result = _parse_json(raw)
+                    logger.info(f"Answered by Groq ({model})")
+                    return result
+                except json.JSONDecodeError as e:
+                    if json_attempt == 0:
+                        logger.warning(f"Groq returned invalid JSON: {e}. Retrying with strict JSON prompt.")
+                        provider_system += "\nReturn ONLY valid JSON."
+                        continue
+                    else:
+                        logger.exception(f"Groq failed JSON parsing ({model}): {e}")
+                        last_exception = e
+                        break
+                except Exception as e:
+                    logger.exception(f"Groq failed ({model}): {e}")
                     last_exception = e
                     break
-            except Exception as e:
-                logger.exception(f"Groq failed ({model}): {e}")
-                last_exception = e
-                break
 
     raise LLMError(f"All LLM providers failed. Last exception: {last_exception}")
