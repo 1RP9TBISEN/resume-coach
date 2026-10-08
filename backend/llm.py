@@ -38,7 +38,7 @@ def generate_json(system: str, user: str, temperature: float = 0.4) -> Dict[str,
 
     if gemini_client:
         try:
-            model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+            model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
             response = gemini_client.models.generate_content(
                 model=model,
                 contents=user,
