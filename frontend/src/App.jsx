@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Header from "./components/Header";
 import ErrorBanner from "./components/ErrorBanner";
 import { ResultsSkeleton, JobsSkeleton } from "./components/LoadingSkeleton";
@@ -7,7 +7,7 @@ import JobsScreen from "./screens/JobsScreen";
 import ResultsScreen from "./screens/ResultsScreen";
 import InterviewScreen from "./screens/InterviewScreen";
 import ScorecardScreen from "./screens/ScorecardScreen";
-import { analyze, matchJobs, answerQuestion, getSummary } from "./api";
+import { analyze, matchJobs, answerQuestion, getSummary, pingHealth, USE_MOCK } from "./api";
 import "./App.css";
 
 export default function App() {
@@ -29,9 +29,19 @@ export default function App() {
     setTheme((prev) => (prev === "dark" ? "light" : "dark"));
   };
 
+  // Cold start background ping on mount to wake sleeping Render instance
+  useEffect(() => {
+    pingHealth();
+  }, []);
+
   // View state machine: 'input' | 'jobs' | 'results' | 'interview' | 'scorecard'
   const [currentView, setCurrentView] = useState("input");
   const [previousView, setPreviousView] = useState("input");
+
+  // Smooth scroll to top on every view transition
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentView]);
 
   // Core App State
   const [resumeMode, setResumeMode] = useState("file"); // 'file' | 'text'
@@ -49,10 +59,35 @@ export default function App() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [currentFeedback, setCurrentFeedback] = useState(null);
 
-  // Loading & Error states
+  // Loading, Cold-start timer & Error states
   const [loadingAction, setLoadingAction] = useState(null); // 'analyze' | 'jobs' | 'answer' | 'summary' | null
+  const [showColdStartNotice, setShowColdStartNotice] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [retryAction, setRetryAction] = useState(null);
+
+  const coldStartTimerRef = useRef(null);
+
+  // Monitor loadingAction duration for >8s cold start notification
+  useEffect(() => {
+    if (loadingAction) {
+      setShowColdStartNotice(false);
+      coldStartTimerRef.current = setTimeout(() => {
+        setShowColdStartNotice(true);
+      }, 8000);
+    } else {
+      if (coldStartTimerRef.current) {
+        clearTimeout(coldStartTimerRef.current);
+        coldStartTimerRef.current = null;
+      }
+      setShowColdStartNotice(false);
+    }
+
+    return () => {
+      if (coldStartTimerRef.current) {
+        clearTimeout(coldStartTimerRef.current);
+      }
+    };
+  }, [loadingAction]);
 
   // Helper to build FormData
   const createResumeFormData = useCallback((extraFields = {}) => {
@@ -60,7 +95,7 @@ export default function App() {
     if (resumeMode === "file" && resumeFile) {
       formData.append("resume", resumeFile);
     } else {
-      formData.append("resume_text", resumeText);
+      formData.append("resume_text", resumeText || "");
     }
     Object.entries(extraFields).forEach(([k, v]) => {
       if (v !== undefined && v !== null) {
@@ -77,13 +112,17 @@ export default function App() {
     setLoadingAction("analyze");
     const formData = createResumeFormData({ jd: targetJd });
 
-    const doFetch = async () => {
+    const execute = async () => {
       try {
         const data = await analyze(formData);
         setAnalysis(data);
         setPreviousView(currentView);
         setCurrentView("results");
       } catch (err) {
+        // Auto-open paste text toggle if error was due to scanned/unparseable PDF
+        if (err.isPdfParseError || /scanned|pdf|parse|extract|unreadable/i.test(err.message)) {
+          setResumeMode("text");
+        }
         setErrorMessage(err.message || "Failed to analyze resume. Please try again.");
         setRetryAction(() => () => handleAnalyze(customJd));
       } finally {
@@ -91,7 +130,7 @@ export default function App() {
       }
     };
 
-    await doFetch();
+    await execute();
   };
 
   // Execute Job Matching
@@ -100,13 +139,16 @@ export default function App() {
     setLoadingAction("jobs");
     const formData = createResumeFormData({ location: "India" });
 
-    const doFetch = async () => {
+    const execute = async () => {
       try {
         const data = await matchJobs(formData);
         setRoles(data.roles || []);
         setPreviousView(currentView);
         setCurrentView("jobs");
       } catch (err) {
+        if (err.isPdfParseError || /scanned|pdf|parse|extract|unreadable/i.test(err.message)) {
+          setResumeMode("text");
+        }
         setErrorMessage(err.message || "Failed to find matching jobs. Please try again.");
         setRetryAction(() => () => handleMatchJobs());
       } finally {
@@ -114,12 +156,12 @@ export default function App() {
       }
     };
 
-    await doFetch();
+    await execute();
   };
 
   // Select a role from Jobs screen to analyze
   const handleSelectRoleForAnalysis = (role) => {
-    if (role.sample_jd) {
+    if (role && role.sample_jd) {
       setJd(role.sample_jd);
       handleAnalyze(role.sample_jd);
     }
@@ -141,10 +183,10 @@ export default function App() {
     setLoadingAction("answer");
 
     const payload = {
-      jd,
+      jd: jd || "",
       resume_text: resumeText || (analysis?.resume_text || ""),
       question,
-      targets_gap,
+      targets_gap: targets_gap || "",
       answer,
     };
 
@@ -156,27 +198,28 @@ export default function App() {
         {
           question,
           answer,
-          score: feedback.score || 7,
+          score: feedback.score !== undefined ? feedback.score : 7,
           targets_gap,
         },
       ]);
     } catch (err) {
-      setErrorMessage(err.message || "Failed to evaluate answer. Please try again.");
+      setErrorMessage(err.message || "Failed to evaluate answer. Please retry.");
+      setRetryAction(() => () => handleAnswerSubmit({ question, targets_gap, answer }));
     } finally {
       setLoadingAction(null);
     }
   };
 
   // Skip question
-  const handleSkipQuestion = async ({ question, targets_gap, answer }) => {
+  const handleSkipQuestion = async ({ question, targets_gap }) => {
     setErrorMessage("");
     setLoadingAction("answer");
 
     const payload = {
-      jd,
+      jd: jd || "",
       resume_text: resumeText || (analysis?.resume_text || ""),
       question,
-      targets_gap,
+      targets_gap: targets_gap || "",
       answer: "Skipped question",
     };
 
@@ -185,7 +228,7 @@ export default function App() {
       const skippedFeedback = {
         ...feedback,
         score: 3,
-        strengths: ["Skipped question - review the model answer to practice this concept"],
+        strengths: ["Skipped question - review the suggested model answer below to prepare for similar prompts"],
       };
       setCurrentFeedback(skippedFeedback);
       setQa((prev) => [
@@ -199,6 +242,7 @@ export default function App() {
       ]);
     } catch (err) {
       setErrorMessage(err.message || "Failed to process skipped question.");
+      setRetryAction(() => () => handleSkipQuestion({ question, targets_gap }));
     } finally {
       setLoadingAction(null);
     }
@@ -218,14 +262,15 @@ export default function App() {
       setErrorMessage("");
       try {
         const summaryData = await getSummary({
-          jd,
-          qa,
+          jd: jd || "",
+          qa: qa || [],
         });
         setSummary(summaryData);
         setPreviousView("interview");
         setCurrentView("scorecard");
       } catch (err) {
         setErrorMessage(err.message || "Failed to generate interview summary.");
+        setRetryAction(() => () => handleNextQuestion());
       } finally {
         setLoadingAction(null);
       }
@@ -273,16 +318,26 @@ export default function App() {
               <div className="loading-view-container">
                 <div className="loading-status-bar">
                   <div className="loading-spinner" />
-                  <span>Evaluating resume against JD & extracting keywords...</span>
+                  <span>Analyzing resume against JD & extracting keywords…</span>
                 </div>
+                {showColdStartNotice && (
+                  <div className="cold-start-banner fade-in">
+                    ⏳ Waking up the AI server, this can take ~30s the first time…
+                  </div>
+                )}
                 <ResultsSkeleton />
               </div>
             ) : loadingAction === "jobs" ? (
               <div className="loading-view-container">
                 <div className="loading-status-bar">
                   <div className="loading-spinner" />
-                  <span>Matching resume with current tech roles in India...</span>
+                  <span>Matching resume with current tech roles in India…</span>
                 </div>
+                {showColdStartNotice && (
+                  <div className="cold-start-banner fade-in">
+                    ⏳ Waking up the AI server, this can take ~30s the first time…
+                  </div>
+                )}
                 <JobsSkeleton />
               </div>
             ) : (
@@ -310,8 +365,13 @@ export default function App() {
               <div className="loading-view-container">
                 <div className="loading-status-bar">
                   <div className="loading-spinner" />
-                  <span>Analyzing resume for selected role...</span>
+                  <span>Analyzing resume for selected role…</span>
                 </div>
+                {showColdStartNotice && (
+                  <div className="cold-start-banner fade-in">
+                    ⏳ Waking up the AI server, this can take ~30s the first time…
+                  </div>
+                )}
                 <ResultsSkeleton />
               </div>
             ) : (
@@ -341,8 +401,13 @@ export default function App() {
               <div className="loading-view-container">
                 <div className="loading-status-bar">
                   <div className="loading-spinner" />
-                  <span>Generating comprehensive mock interview scorecard...</span>
+                  <span>Generating comprehensive mock interview scorecard…</span>
                 </div>
+                {showColdStartNotice && (
+                  <div className="cold-start-banner fade-in">
+                    ⏳ Waking up the AI server, this can take ~30s the first time…
+                  </div>
+                )}
                 <ResultsSkeleton />
               </div>
             ) : (
@@ -354,6 +419,7 @@ export default function App() {
                 onNextQuestion={handleNextQuestion}
                 feedback={currentFeedback}
                 loadingFeedback={loadingAction === "answer"}
+                showColdStartNotice={showColdStartNotice}
                 onBackToResults={() => setCurrentView("results")}
                 isFinished={qa.length >= (analysis?.questions?.length || 5)}
               />

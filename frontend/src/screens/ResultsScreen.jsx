@@ -62,7 +62,7 @@ export default function ResultsScreen({ analysis, onStartInterview, onBack }) {
 
         <button type="button" className="btn-primary btn-cta-start" onClick={onStartInterview}>
           <MessageSquare size={16} />
-          <span>Start Mock Interview ({questions.length || 5} Questions)</span>
+          <span>{questions.length > 0 ? `Start Mock Interview (${questions.length} Questions)` : "Start Mock Interview"}</span>
           <ArrowRight size={16} />
         </button>
       </div>
