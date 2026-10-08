@@ -16,6 +16,7 @@
 | `POST` | `/api/jobs/match` | Multipart Form: `resume` (PDF file) or `resume_text` (string), `location` (string, default "India") | JobMatchResponse JSON | Matches resume with top tech roles in India, returns fit score, matched/missing skills, sample JD |
 | `POST` | `/api/interview/answer` | JSON: `{jd, resume_text, question, targets_gap, answer}` | AnswerFeedback JSON | Evaluates interview answer, returns score (0-10), strengths, improvements, and stronger answer |
 | `POST` | `/api/interview/summary` | JSON: `{jd, qa: [{question, answer, score}]}` | InterviewSummary JSON | Generates final interview scorecard with overall score, readiness, strengths, focus areas, next steps |
+| `POST` | `/api/transcribe` | Multipart Form: `audio` (file, max 10MB) | `{"text": "..."}` | Transcribes audio file into text using Groq Whisper model |
 
 ---
 

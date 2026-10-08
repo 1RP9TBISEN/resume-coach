@@ -247,3 +247,36 @@ def interview_summary(req: SummaryRequest):
         return result
     except LLMError:
         raise HTTPException(502, "AI is busy right now, please retry in a few seconds.")
+
+import logging
+logger = logging.getLogger(__name__)
+
+@app.post("/api/transcribe")
+def transcribe(audio: Optional[UploadFile] = File(None)):
+    if not audio or not audio.filename:
+        raise HTTPException(400, "No audio file provided")
+        
+    content = audio.file.read()
+    if len(content) == 0:
+        raise HTTPException(400, "Empty audio file")
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(413, "Audio file exceeds 10MB")
+        
+    from llm import get_groq_client
+    groq_client = get_groq_client()
+    if not groq_client:
+        raise HTTPException(503, "Voice is unavailable")
+        
+    try:
+        model = os.getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo")
+        transcription = groq_client.audio.transcriptions.create(
+            file=(audio.filename, content),
+            model=model,
+            language="en",
+            response_format="json",
+            temperature=0
+        )
+        return {"text": transcription.text}
+    except Exception as e:
+        logger.exception(f"Groq STT failed: {e}")
+        raise HTTPException(502, "Voice is busy right now, please retry in a few seconds.")
