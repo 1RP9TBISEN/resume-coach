@@ -84,7 +84,9 @@ def extract_resume_text(resume_file: Optional[UploadFile], resume_text: Optional
             reader = PdfReader(io.BytesIO(content))
             text = ""
             for page in reader.pages:
-                text += page.extract_text() + "\n"
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
         except Exception:
             raise HTTPException(422, "Couldn't read text from this PDF (maybe scanned). Paste your resume text instead.")
             
@@ -121,20 +123,28 @@ def analyze(
         user_prompt = build_analyze_prompt(jd, extracted_text)
         result = generate_json(ANALYZE_SYSTEM_PROMPT, user_prompt)
         
-        # Normalize
-        result["match_score"] = max(0, min(100, result.get("match_score", 0)))
-        result["gaps"] = result.get("gaps", [])
-        result["rewrites"] = result.get("rewrites", [])
-        result["skills"] = result.get("skills", [])
-        result["breakdown"] = result.get("breakdown", [])
+        if not isinstance(result, dict):
+            result = {}
+            
+        # Normalize gracefully
+        match_score = result.get("match_score", 0)
+        if not isinstance(match_score, (int, float)): match_score = 0
+        result["match_score"] = max(0, min(100, int(match_score)))
+        
+        result["gaps"] = result.get("gaps") if isinstance(result.get("gaps"), list) else []
+        result["rewrites"] = result.get("rewrites") if isinstance(result.get("rewrites"), list) else []
+        result["skills"] = result.get("skills") if isinstance(result.get("skills"), list) else []
+        result["breakdown"] = result.get("breakdown") if isinstance(result.get("breakdown"), list) else []
         
         for sk in result["skills"]:
+            if not isinstance(sk, dict): continue
             if sk.get("status") not in ["matched", "partial", "missing"]:
                 sk["status"] = "missing"
             if sk.get("importance") not in ["high", "medium", "low"]:
                 sk["importance"] = "medium"
                 
-        questions = result.get("questions", [])
+        questions = result.get("questions") if isinstance(result.get("questions"), list) else []
+        questions = [q for q in questions if isinstance(q, dict)]
         if len(questions) > 5:
             questions = questions[:5]
         for i, q in enumerate(questions):
@@ -167,15 +177,24 @@ def match_jobs(
         user_prompt = build_jobs_prompt(extracted_text)
         result = generate_json(system_prompt, user_prompt)
         
-        roles = result.get("roles", [])
+        if not isinstance(result, dict):
+            result = {}
+            
+        roles = result.get("roles") if isinstance(result.get("roles"), list) else []
+        valid_roles = []
         for r in roles:
-            r["fit_score"] = max(0, min(100, r.get("fit_score", 0)))
-            r["matched_skills"] = r.get("matched_skills", [])
-            r["missing_skills"] = r.get("missing_skills", [])
+            if not isinstance(r, dict): continue
+            score = r.get("fit_score", 0)
+            if not isinstance(score, (int, float)): score = 0
+            r["fit_score"] = max(0, min(100, int(score)))
+            
+            r["matched_skills"] = r.get("matched_skills") if isinstance(r.get("matched_skills"), list) else []
+            r["missing_skills"] = r.get("missing_skills") if isinstance(r.get("missing_skills"), list) else []
             if r.get("level") not in ["intern", "junior", "mid"]:
                 r["level"] = "junior"
-                
-        return {"resume_text": extracted_text, "roles": roles}
+            valid_roles.append(r)
+            
+        return {"resume_text": extracted_text, "roles": valid_roles}
     except LLMError:
         raise HTTPException(502, "AI is busy right now, please retry in a few seconds.")
 
@@ -185,9 +204,15 @@ def interview_answer(req: AnswerRequest):
         user_prompt = build_answer_prompt(req.jd, req.resume_text, req.question, req.targets_gap, req.answer)
         result = generate_json(ANSWER_SYSTEM_PROMPT, user_prompt)
         
-        result["score"] = max(0, min(10, result.get("score", 0)))
-        result["strengths"] = result.get("strengths", [])
-        result["improvements"] = result.get("improvements", [])
+        if not isinstance(result, dict):
+            result = {}
+            
+        score = result.get("score", 0)
+        if not isinstance(score, (int, float)): score = 0
+        result["score"] = max(0, min(10, int(score)))
+        
+        result["strengths"] = result.get("strengths") if isinstance(result.get("strengths"), list) else []
+        result["improvements"] = result.get("improvements") if isinstance(result.get("improvements"), list) else []
         
         return result
     except LLMError:
@@ -202,12 +227,19 @@ def interview_summary(req: SummaryRequest):
         user_prompt = build_summary_prompt(req.jd, [{"question": q.question, "answer": q.answer, "score": q.score} for q in req.qa])
         result = generate_json(SUMMARY_SYSTEM_PROMPT, user_prompt)
         
-        result["overall_score"] = max(0, min(100, result.get("overall_score", 0)))
+        if not isinstance(result, dict):
+            result = {}
+            
+        score = result.get("overall_score", 0)
+        if not isinstance(score, (int, float)): score = 0
+        result["overall_score"] = max(0, min(100, int(score)))
+        
         if result.get("readiness") not in ["ready", "almost", "not_yet"]:
             result["readiness"] = "not_yet"
-        result["top_strengths"] = result.get("top_strengths", [])
-        result["focus_areas"] = result.get("focus_areas", [])
-        result["next_steps"] = result.get("next_steps", [])
+            
+        result["top_strengths"] = result.get("top_strengths") if isinstance(result.get("top_strengths"), list) else []
+        result["focus_areas"] = result.get("focus_areas") if isinstance(result.get("focus_areas"), list) else []
+        result["next_steps"] = result.get("next_steps") if isinstance(result.get("next_steps"), list) else []
         
         return result
     except LLMError:
