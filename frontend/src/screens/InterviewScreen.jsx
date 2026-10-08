@@ -20,7 +20,7 @@ import {
   Check,
 } from "../components/Icons";
 import { FeedbackSkeleton } from "../components/LoadingSkeleton";
-import { useVoiceInterview, isVoiceSupported } from "../hooks/useVoiceInterview";
+import { useVoiceInterview, isVoiceSupported, unlockSharedAudio } from "../hooks/useVoiceInterview";
 
 export default function InterviewScreen({
   questions = [],
@@ -120,6 +120,7 @@ export default function InterviewScreen({
   };
 
   const startVoiceInterview = () => {
+    unlockSharedAudio();
     setIsVoiceMode(true);
   };
 

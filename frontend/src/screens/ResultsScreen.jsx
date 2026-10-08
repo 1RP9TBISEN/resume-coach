@@ -16,6 +16,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "../components/Icons";
+import { unlockSharedAudio } from "../hooks/useVoiceInterview";
 
 function escapeRegex(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -240,7 +241,14 @@ export default function ResultsScreen({
             <MessageSquare size={16} />
             <span>Text Interview</span>
           </button>
-          <button type="button" className="btn-primary btn-cta-start" onClick={() => onStartInterview(true)}>
+          <button
+            type="button"
+            className="btn-primary btn-cta-start"
+            onClick={() => {
+              unlockSharedAudio();
+              onStartInterview(true);
+            }}
+          >
             <Sparkles size={16} />
             <span>🎙 Start Voice Interview ({questions.length || 5} Qs)</span>
             <ArrowRight size={16} />
@@ -533,7 +541,14 @@ export default function ResultsScreen({
             <MessageSquare size={18} />
             <span>Text Mode</span>
           </button>
-          <button type="button" className="btn-primary btn-cta-large" onClick={() => onStartInterview(true)}>
+          <button
+            type="button"
+            className="btn-primary btn-cta-large"
+            onClick={() => {
+              unlockSharedAudio();
+              onStartInterview(true);
+            }}
+          >
             <Sparkles size={18} />
             <span>🎙 Start Voice Interview</span>
             <ArrowRight size={18} />

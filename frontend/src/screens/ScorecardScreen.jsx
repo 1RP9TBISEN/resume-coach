@@ -11,6 +11,8 @@ import {
   Target,
   FileText
 } from "../components/Icons";
+import { speakAudio, USE_MOCK } from "../api";
+import { getOrCreateSharedAudio } from "../hooks/useVoiceInterview";
 
 export default function ScorecardScreen({
   summary,
@@ -58,13 +60,63 @@ export default function ScorecardScreen({
 
   // Read out the scorecard summary if voice mode was active
   useEffect(() => {
-    if (wasVoiceMode && typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      const text = `Congratulations on completing your mock interview! Your overall score is ${overall_score} percent. Your readiness assessment is: ${currentReadiness.label}.`;
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
-      window.speechSynthesis.speak(utterance);
-    }
+    if (!wasVoiceMode) return;
+    const text = `Congratulations on completing your mock interview! Your overall score is ${overall_score} percent. Your readiness assessment is: ${currentReadiness.label}.`;
+
+    let isCancelled = false;
+    let audioUrl = null;
+    const audio = getOrCreateSharedAudio();
+
+    const playWithBackend = async () => {
+      if (USE_MOCK) {
+        throw new Error("Mock mode uses browser voice");
+      }
+      const blob = await speakAudio(text, null, 6000);
+      if (isCancelled) return;
+      audioUrl = URL.createObjectURL(blob);
+      if (audio) {
+        audio.src = audioUrl;
+        audio.onended = () => {
+          if (audioUrl) {
+            URL.revokeObjectURL(audioUrl);
+            audioUrl = null;
+          }
+        };
+        await audio.play();
+      }
+    };
+
+    playWithBackend().catch(() => {
+      if (isCancelled) return;
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        window.speechSynthesis.speak(utterance);
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+      if (audio) {
+        try {
+          audio.pause();
+          audio.removeAttribute("src");
+        } catch {
+          // ignore
+        }
+      }
+      if (audioUrl) {
+        try {
+          URL.revokeObjectURL(audioUrl);
+        } catch {
+          // ignore
+        }
+      }
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
   }, [wasVoiceMode, overall_score, currentReadiness.label]);
 
   const formattedDate = new Date().toLocaleDateString("en-US", {

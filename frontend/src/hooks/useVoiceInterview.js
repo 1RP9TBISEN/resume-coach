@@ -1,5 +1,42 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { transcribe } from "../api";
+import { transcribe, speakAudio, USE_MOCK } from "../api";
+
+// Reused shared HTMLAudioElement for iOS autoplay unlock & human-like voice playback
+let sharedAudioInstance = null;
+
+export function getOrCreateSharedAudio() {
+  if (typeof window === "undefined") return null;
+  if (!sharedAudioInstance) {
+    sharedAudioInstance = new Audio();
+    sharedAudioInstance.preload = "auto";
+  }
+  return sharedAudioInstance;
+}
+
+/**
+ * Call on user gesture (e.g. "Start voice interview" button tap) to unlock audio playback on iOS Safari
+ */
+export function unlockSharedAudio() {
+  const audio = getOrCreateSharedAudio();
+  if (audio) {
+    try {
+      // Play and immediately pause to unlock playback permissions on iOS
+      const playPromise = audio.play();
+      if (playPromise && typeof playPromise.then === "function") {
+        playPromise
+          .then(() => {
+            audio.pause();
+            audio.currentTime = 0;
+          })
+          .catch(() => {
+            // Ignore autoplay rejection on empty buffer
+          });
+      }
+    } catch {
+      // Ignore
+    }
+  }
+}
 
 export function isVoiceSupported() {
   return (
@@ -10,7 +47,7 @@ export function isVoiceSupported() {
   );
 }
 
-function getBestVoice() {
+function getBestBrowserVoice() {
   if (typeof window === "undefined" || !window.speechSynthesis) return null;
   const voices = window.speechSynthesis.getVoices();
   const indianVoice = voices.find((v) => /en[-_]IN/i.test(v.lang) || /india/i.test(v.name));
@@ -25,7 +62,6 @@ export function useVoiceInterview({
   setIsVoiceMode,
   onAnswerSubmit,
   onNextQuestion,
-  onFinishInterview,
   isLastQuestion,
   currentFeedback,
   loadingFeedback,
@@ -37,6 +73,16 @@ export function useVoiceInterview({
   const [transcriptPreview, setTranscriptPreview] = useState("");
   const [emptyRetries, setEmptyRetries] = useState(0);
   const [apiRetries, setApiRetries] = useState(0);
+
+  // Backend TTS Failure Counter (After 2 failures, stay on browser voice for the session)
+  const backendFailuresRef = useRef(0);
+
+  // Active audio playback tracking
+  const activeAudioUrlRef = useRef(null);
+  const currentSpeakAbortCtrlRef = useRef(null);
+
+  // Prefetch cache ref: { text, promise, controller, blob }
+  const prefetchRef = useRef(null);
 
   // Refs for audio hardware and timers
   const mediaStreamRef = useRef(null);
@@ -56,7 +102,39 @@ export function useVoiceInterview({
   const isPausedRef = useRef(false);
   const activeQuestionIdRef = useRef(null);
 
-  // Stop all active audio tracks and recording
+  // Initialize shared audio element
+  useEffect(() => {
+    getOrCreateSharedAudio();
+  }, []);
+
+  // Stop and cleanup any active HTMLAudioElement playback & revoke object URL
+  const stopAndCleanupAudio = useCallback(() => {
+    if (currentSpeakAbortCtrlRef.current) {
+      currentSpeakAbortCtrlRef.current.abort();
+      currentSpeakAbortCtrlRef.current = null;
+    }
+    const audio = getOrCreateSharedAudio();
+    if (audio) {
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.removeAttribute("src");
+        audio.load();
+      } catch (e) {
+        // ignore
+      }
+    }
+    if (activeAudioUrlRef.current) {
+      try {
+        URL.revokeObjectURL(activeAudioUrlRef.current);
+      } catch (e) {
+        // ignore
+      }
+      activeAudioUrlRef.current = null;
+    }
+  }, []);
+
+  // Stop all active mic audio tracks and recording
   const stopAudioCapture = useCallback(() => {
     if (animFrameRef.current) {
       cancelAnimationFrame(animFrameRef.current);
@@ -84,12 +162,13 @@ export function useVoiceInterview({
     setAudioLevel(0);
   }, []);
 
-  // Cancel any ongoing text-to-speech
+  // Cancel any ongoing browser text-to-speech
   const cancelSpeech = useCallback(() => {
+    stopAndCleanupAudio();
     if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
-  }, []);
+  }, [stopAndCleanupAudio]);
 
   // Clear all pending loop timers
   const clearAllTimers = useCallback(() => {
@@ -99,23 +178,17 @@ export function useVoiceInterview({
     if (autoNextTimerRef.current) clearTimeout(autoNextTimerRef.current);
   }, []);
 
-  // Speak a phrase via SpeechSynthesis
-  const speak = useCallback(
-    (text, onEnd) => {
-      if (typeof window === "undefined" || !window.speechSynthesis) {
-        if (onEnd) onEnd();
-        return;
-      }
-      cancelSpeech();
+  // Helper: Play audio via browser SpeechSynthesis
+  const speakWithBrowserVoice = useCallback((cleanText, onEnd) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+      if (onEnd && !isPausedRef.current) onEnd();
+      return;
+    }
 
-      const cleanText = text.replace(/[*#_`]/g, "").trim();
-      if (!cleanText) {
-        if (onEnd) onEnd();
-        return;
-      }
-
+    try {
+      window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(cleanText);
-      const voice = getBestVoice();
+      const voice = getBestBrowserVoice();
       if (voice) utterance.voice = voice;
       utterance.rate = 1.0;
       utterance.pitch = 1.0;
@@ -125,14 +198,179 @@ export function useVoiceInterview({
       };
 
       utterance.onerror = (e) => {
-        console.warn("[TTS] Error:", e);
+        console.warn("[TTS Browser] Error:", e);
         if (onEnd && !isPausedRef.current) onEnd();
       };
 
       window.speechSynthesis.speak(utterance);
+    } catch (err) {
+      console.warn("[TTS Browser] Speech error:", err);
+      if (onEnd && !isPausedRef.current) onEnd();
+    }
+  }, []);
+
+  // Helper: Play an audio Blob using the single reused HTMLAudioElement
+  const playAudioBlob = useCallback((blob, onEnd) => {
+    return new Promise((resolve, reject) => {
+      const audio = getOrCreateSharedAudio();
+      if (!audio) {
+        reject(new Error("Audio element unavailable"));
+        return;
+      }
+
+      stopAndCleanupAudio();
+
+      const objectUrl = URL.createObjectURL(blob);
+      activeAudioUrlRef.current = objectUrl;
+
+      let finished = false;
+
+      const cleanupListeners = () => {
+        audio.removeEventListener("ended", handleEnded);
+        audio.removeEventListener("error", handleError);
+        if (activeAudioUrlRef.current === objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+          activeAudioUrlRef.current = null;
+        }
+      };
+
+      const handleEnded = () => {
+        if (finished) return;
+        finished = true;
+        cleanupListeners();
+        resolve();
+        if (onEnd && !isPausedRef.current) {
+          onEnd();
+        }
+      };
+
+      const handleError = (e) => {
+        if (finished) return;
+        finished = true;
+        cleanupListeners();
+        reject(e || new Error("HTMLAudioElement playback error"));
+      };
+
+      audio.addEventListener("ended", handleEnded);
+      audio.addEventListener("error", handleError);
+      audio.src = objectUrl;
+
+      audio.play().catch((playErr) => {
+        handleError(playErr);
+      });
+    });
+  }, [stopAndCleanupAudio]);
+
+  // Main speak function: Backend Groq TTS with prefetch, 6s timeout, 2-failure latch, and browser fallback
+  const speak = useCallback(
+    async (text, onEnd) => {
+      cancelSpeech();
+
+      const cleanText = text.replace(/[*#_`]/g, "").trim();
+      if (!cleanText) {
+        if (onEnd && !isPausedRef.current) onEnd();
+        return;
+      }
+
+      // Mock mode or latch >= 2 failures: use browser voice directly
+      if (USE_MOCK || backendFailuresRef.current >= 2) {
+        speakWithBrowserVoice(cleanText, onEnd);
+        return;
+      }
+
+      // Check if we have a prefetched audio blob/promise for this exact text
+      let audioBlob = null;
+      if (prefetchRef.current && prefetchRef.current.text === cleanText) {
+        const cached = prefetchRef.current;
+        prefetchRef.current = null; // consume prefetch
+        try {
+          audioBlob = cached.blob || (await cached.promise);
+        } catch (err) {
+          console.warn("[Voice] Prefetched audio failed:", err);
+          audioBlob = null;
+        }
+      }
+
+      // If not in prefetch cache, fetch from /api/speak with 6s timeout
+      if (!audioBlob) {
+        const abortCtrl = new AbortController();
+        currentSpeakAbortCtrlRef.current = abortCtrl;
+        try {
+          audioBlob = await speakAudio(cleanText, abortCtrl.signal, 6000);
+        } catch (err) {
+          backendFailuresRef.current += 1;
+          console.warn(
+            `[Voice] /api/speak failed (${backendFailuresRef.current}/2). Falling back to browser voice:`,
+            err.message
+          );
+          currentSpeakAbortCtrlRef.current = null;
+          speakWithBrowserVoice(cleanText, onEnd);
+          return;
+        } finally {
+          currentSpeakAbortCtrlRef.current = null;
+        }
+      }
+
+      // Play the retrieved audio blob
+      try {
+        await playAudioBlob(audioBlob, onEnd);
+      } catch (playErr) {
+        backendFailuresRef.current += 1;
+        console.warn(
+          `[Voice] Audio playback failed (${backendFailuresRef.current}/2). Falling back to browser voice:`,
+          playErr
+        );
+        speakWithBrowserVoice(cleanText, onEnd);
+      }
     },
-    [cancelSpeech]
+    [cancelSpeech, speakWithBrowserVoice, playAudioBlob]
   );
+
+  // Background Prefetching: As soon as a question is shown/changed, prefetch its audio
+  useEffect(() => {
+    if (USE_MOCK || backendFailuresRef.current >= 2 || !currentQuestion?.question) {
+      return;
+    }
+
+    const cleanQ = currentQuestion.question.replace(/[*#_`]/g, "").trim();
+    if (!cleanQ) return;
+
+    // Skip if already prefetched for this text
+    if (prefetchRef.current && prefetchRef.current.text === cleanQ) {
+      return;
+    }
+
+    // Abort any old unused prefetch
+    if (prefetchRef.current?.controller) {
+      prefetchRef.current.controller.abort();
+    }
+
+    const abortController = new AbortController();
+    const fetchPromise = speakAudio(cleanQ, abortController.signal, 6000)
+      .then((blob) => {
+        if (prefetchRef.current && prefetchRef.current.text === cleanQ) {
+          prefetchRef.current.blob = blob;
+        }
+        return blob;
+      })
+      .catch((err) => {
+        // Silently catch prefetch errors; fallback will handle when actually spoken
+        return null;
+      });
+
+    prefetchRef.current = {
+      text: cleanQ,
+      controller: abortController,
+      promise: fetchPromise,
+      blob: null,
+    };
+
+    return () => {
+      if (prefetchRef.current?.controller) {
+        prefetchRef.current.controller.abort();
+      }
+    };
+  }, [currentQuestion?.id, currentQuestion?.question]);
 
   // Fallback to typing mode with optional error notice
   const fallbackToTyping = useCallback(

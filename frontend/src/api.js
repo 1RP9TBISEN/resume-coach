@@ -207,3 +207,55 @@ export async function transcribe(formData) {
   }
 }
 
+/**
+ * POST /api/speak (JSON {text}) -> returns audio Blob
+ * Timeout is 6s as per voice responsiveness requirements
+ */
+export async function speakAudio(text, signal = null, timeoutMs = 6000) {
+  if (USE_MOCK) {
+    throw new Error("Mock mode uses browser voice");
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  const onExternalAbort = () => controller.abort();
+  if (signal) {
+    if (signal.aborted) {
+      controller.abort();
+    } else {
+      signal.addEventListener("abort", onExternalAbort);
+    }
+  }
+
+  try {
+    const res = await fetch(`${BASE_URL}/api/speak`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const err = new Error(`Speak API returned HTTP ${res.status}`);
+      err.status = res.status;
+      throw err;
+    }
+
+    const blob = await res.blob();
+    return blob;
+  } catch (err) {
+    if (err.name === "AbortError") {
+      const abortErr = new Error("Speak API request timed out after 6s");
+      abortErr.status = 408;
+      throw abortErr;
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+    if (signal) {
+      signal.removeEventListener("abort", onExternalAbort);
+    }
+  }
+}
+
