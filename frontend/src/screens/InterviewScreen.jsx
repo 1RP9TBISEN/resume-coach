@@ -16,12 +16,13 @@ import { FeedbackSkeleton } from "../components/LoadingSkeleton";
 
 export default function InterviewScreen({
   questions = [],
-  currentQuestionIndex,
+  currentQuestionIndex = 0,
   onAnswerSubmit,
   onSkipQuestion,
   onNextQuestion,
   feedback,
   loadingFeedback,
+  showColdStartNotice,
   onBackToResults,
   isFinished,
 }) {
@@ -29,15 +30,18 @@ export default function InterviewScreen({
   const [showBetterAnswer, setShowBetterAnswer] = useState(false);
   const textareaRef = useRef(null);
 
-  const currentQ = questions[currentQuestionIndex] || {
+  // Defensive fallback question if list is empty
+  const defaultQuestion = {
     id: 1,
-    question: "Tell me about your technical background and experience.",
+    question: "Walk me through your most challenging frontend or full-stack project. What architectural decisions did you make?",
     type: "technical",
-    targets_gap: "Core Technical Background",
+    targets_gap: "Project Architecture & Technical Depth",
   };
 
-  const totalQuestions = questions.length || 5;
-  const progressPercent = Math.round(((currentQuestionIndex + 1) / totalQuestions) * 100);
+  const safeQuestions = questions.length > 0 ? questions : [defaultQuestion];
+  const currentQ = safeQuestions[currentQuestionIndex] || safeQuestions[0] || defaultQuestion;
+  const totalQuestions = safeQuestions.length;
+  const progressPercent = Math.min(100, Math.round(((currentQuestionIndex + 1) / totalQuestions) * 100));
 
   // Reset textarea when question changes
   useEffect(() => {
@@ -75,7 +79,7 @@ export default function InterviewScreen({
     });
   };
 
-  const isLastQuestion = currentQuestionIndex === totalQuestions - 1;
+  const isLastQuestion = currentQuestionIndex >= totalQuestions - 1;
 
   // Type badge styling
   const typeMap = {
@@ -83,7 +87,7 @@ export default function InterviewScreen({
     behavioral: { label: "Behavioral (STAR)", class: "badge-behavioral" },
     situational: { label: "Situational / System", class: "badge-situational" },
   };
-  const qType = typeMap[currentQ.type?.toLowerCase()] || { label: currentQ.type || "Interview", class: "badge-technical" };
+  const qType = typeMap[currentQ.type?.toLowerCase()] || { label: currentQ.type || "Technical", class: "badge-technical" };
 
   return (
     <div className="screen-container fade-in">
@@ -174,8 +178,13 @@ export default function InterviewScreen({
           <div className="feedback-loading-state">
             <div className="evaluating-banner">
               <Sparkles size={18} className="spin-icon text-accent" />
-              <span>Evaluating your response against industry rubrics...</span>
+              <span>Scoring your response against technical rubrics…</span>
             </div>
+            {showColdStartNotice && (
+              <div className="cold-start-banner fade-in" style={{ marginBottom: "12px" }}>
+                ⏳ Waking up the AI server, this can take ~30s the first time…
+              </div>
+            )}
             <FeedbackSkeleton />
           </div>
         )}
@@ -185,15 +194,15 @@ export default function InterviewScreen({
           <div className="feedback-card fade-in">
             <div className="feedback-header">
               <div className="feedback-score-badge">
-                <span className="feedback-score-num">{feedback.score}</span>
+                <span className="feedback-score-num">{feedback.score !== undefined ? feedback.score : 7}</span>
                 <span className="feedback-score-denom">/ 10</span>
               </div>
               <div className="feedback-verdict-title">
-                {feedback.score >= 8 ? (
+                {(feedback.score || 0) >= 8 ? (
                   <span className="text-success">
                     <CheckCircle2 size={18} /> Excellent Response!
                   </span>
-                ) : feedback.score >= 6 ? (
+                ) : (feedback.score || 0) >= 6 ? (
                   <span className="text-warning">
                     <HelpCircle size={18} /> Good attempt with room for improvement
                   </span>

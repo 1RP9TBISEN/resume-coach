@@ -256,7 +256,7 @@ export default function InputScreen({
           onClick={onAnalyze}
         >
           <Sparkles size={18} />
-          <span>{loading ? "Analyzing..." : "Analyze Against This JD"}</span>
+          <span>{loading ? "Analyzing…" : "Analyze Against This JD"}</span>
           <ArrowRight size={16} />
         </button>
 
@@ -267,7 +267,7 @@ export default function InputScreen({
           onClick={onMatchJobs}
         >
           <Briefcase size={18} />
-          <span>{loading ? "Matching..." : "Find Matching Jobs in India"}</span>
+          <span>{loading ? "Matching…" : "Find Matching Jobs in India"}</span>
           <ArrowRight size={16} />
         </button>
       </div>

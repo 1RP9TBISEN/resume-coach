@@ -1,5 +1,6 @@
 import React from "react";
 import { Sparkles, Sun, Moon } from "./Icons";
+import { USE_MOCK } from "../api";
 
 export default function Header({ currentView, setView, isDark, toggleTheme, hasAnalysis, hasJobs }) {
   const steps = [
@@ -7,7 +8,7 @@ export default function Header({ currentView, setView, isDark, toggleTheme, hasA
     { key: "jobs", label: "2. Jobs", enabled: hasJobs },
     { key: "results", label: "3. Results", enabled: hasAnalysis },
     { key: "interview", label: "4. Interview", enabled: hasAnalysis },
-    { key: "scorecard", label: "5. Scorecard", enabled: false }, // only after interview or summary
+    { key: "scorecard", label: "5. Scorecard", enabled: false },
   ];
 
   return (
@@ -26,6 +27,12 @@ export default function Header({ currentView, setView, isDark, toggleTheme, hasA
             Resume<span className="brand-highlight">Coach</span>
           </span>
         </button>
+
+        {/* Live AI / Mock Mode Badge */}
+        <div className={`mode-badge ${USE_MOCK ? "mode-mock" : "mode-live"}`}>
+          <span className="mode-dot" />
+          <span className="mode-label">{USE_MOCK ? "Mock Data" : "Live AI"}</span>
+        </div>
       </div>
 
       <nav className="header-breadcrumbs" aria-label="Step progress">
