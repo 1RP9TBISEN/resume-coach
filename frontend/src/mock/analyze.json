@@ -1,0 +1,130 @@
+{
+  "resume_text": "Arjun Sharma | B.Tech CSE NIT Karnataka | Skills: React, JavaScript, Python, FastAPI, Tailwind CSS, Git | Projects: DevFlow (Collaborative code editor), Campus Placement Platform | Experience: Frontend Developer Intern at TechStart Labs",
+  "match_score": 82,
+  "verdict": "Strong candidate with solid React & JavaScript fundamentals; needs TypeScript & production testing metrics to be fully competitive.",
+  "breakdown": [
+    { "label": "Skills", "score": 88 },
+    { "label": "Experience", "score": 78 },
+    { "label": "Keywords", "score": 85 },
+    { "label": "Impact", "score": 77 }
+  ],
+  "skills": [
+    {
+      "name": "React.js",
+      "status": "matched",
+      "importance": "high",
+      "evidence": "Built multiple production web apps with React 18, hooks, Context API, and component design"
+    },
+    {
+      "name": "JavaScript (ES6+)",
+      "status": "matched",
+      "importance": "high",
+      "evidence": "Strong command of async/await, closures, DOM manipulation, and promises"
+    },
+    {
+      "name": "REST API Integration",
+      "status": "matched",
+      "importance": "high",
+      "evidence": "Integrated FastAPI & Node.js endpoints with optimistic UI updates and error handling"
+    },
+    {
+      "name": "HTML5 & Modern CSS",
+      "status": "matched",
+      "importance": "medium",
+      "evidence": "Responsive design portfolio with CSS variables, flexbox, and mobile-first architecture"
+    },
+    {
+      "name": "TypeScript",
+      "status": "partial",
+      "importance": "high",
+      "evidence": "Mentioned in personal projects, but lacks enterprise codebase experience"
+    },
+    {
+      "name": "State Management (Redux / Zustand)",
+      "status": "partial",
+      "importance": "medium",
+      "evidence": "Used Context API and Redux Toolkit in academic projects"
+    },
+    {
+      "name": "Unit Testing (Jest / React Testing Library)",
+      "status": "missing",
+      "importance": "medium",
+      "evidence": null
+    },
+    {
+      "name": "Docker & CI/CD",
+      "status": "missing",
+      "importance": "low",
+      "evidence": null
+    }
+  ],
+  "gaps": [
+    {
+      "gap": "Enterprise TypeScript Experience",
+      "why_it_matters": "The engineering team uses strict TypeScript across all shared frontend micro-frontends and libraries.",
+      "how_to_fix": "Highlight TypeScript usage in your DevFlow project and describe how you typed complex WebSocket event payloads."
+    },
+    {
+      "gap": "Automated Testing & Test Coverage",
+      "why_it_matters": "Production features require unit and integration tests with Jest and React Testing Library before deployment.",
+      "how_to_fix": "Add a note regarding component unit testing or snapshot testing in your TechStart Labs internship bullet."
+    },
+    {
+      "gap": "Quantifiable Performance Metrics in Work History",
+      "why_it_matters": "Hiring managers look for measured business results (e.g. latency reductions, conversion boosts).",
+      "how_to_fix": "Rewrite internship bullets to quantify how much bug fixing improved crash-free sessions or page load times."
+    }
+  ],
+  "rewrites": [
+    {
+      "original": "Developed 8+ reusable React UI components and connected them to backend REST APIs.",
+      "improved": "Architected 8+ modular, accessible React components and integrated RESTful endpoints, cutting feature delivery time by 20% and ensuring 99.5% uptime.",
+      "reason": "Uses strong action verbs and quantifies impact on engineering velocity and reliability.",
+      "jd_keywords": ["React.js", "REST APIs", "Accessibility", "Performance"]
+    },
+    {
+      "original": "Fixed 20+ frontend rendering bugs and improved cross-browser compatibility.",
+      "improved": "Resolved 20+ high-priority UI and rendering bugs across Safari and Chrome, reducing crash reports by 35% and elevating mobile user retention.",
+      "reason": "Quantifies bug resolution with business outcome metrics (crash reports and retention).",
+      "jd_keywords": ["Cross-Browser Compatibility", "Mobile-First", "Bug Triaging"]
+    },
+    {
+      "original": "Built automated quiz engine and resume parser for 1,200+ university batchmates.",
+      "improved": "Engineered an automated assessment engine using React and FastAPI serving 1,200+ active students, with client-side caching reducing server load by 40%.",
+      "reason": "Emphasizes full-stack engineering depth, scalability, and system optimization.",
+      "jd_keywords": ["FastAPI", "Client-Side Caching", "Scalability", "State Management"]
+    }
+  ],
+  "questions": [
+    {
+      "id": 1,
+      "question": "How do you handle API failure scenarios and network latency spikes gracefully in a React application to maintain a smooth user experience?",
+      "type": "technical",
+      "targets_gap": "Enterprise TypeScript Experience"
+    },
+    {
+      "id": 2,
+      "question": "Walk me through how you would architect a reusable component library in React. What principles do you follow for props design and accessibility?",
+      "type": "technical",
+      "targets_gap": "Automated Testing & Test Coverage"
+    },
+    {
+      "id": 3,
+      "question": "Tell me about a time during your internship or projects when you had to debug a difficult UI rendering bug right before a critical demo. How did you resolve it?",
+      "type": "behavioral",
+      "targets_gap": "Quantifiable Performance Metrics in Work History"
+    },
+    {
+      "id": 4,
+      "question": "Suppose our production web app is experiencing sluggish performance on low-end mobile devices in tier-2 Indian cities. What steps would you take to diagnose and optimize it?",
+      "type": "situational",
+      "targets_gap": "Quantifiable Performance Metrics in Work History"
+    },
+    {
+      "id": 5,
+      "question": "How do you approach learning a new tool or framework (like TypeScript or Jest) on the job when a sprint task requires it immediately?",
+      "type": "behavioral",
+      "targets_gap": "Enterprise TypeScript Experience"
+    }
+  ]
+}
