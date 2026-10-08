@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import ScoreRing from "../components/ScoreRing";
 import {
   RotateCcw,
@@ -12,7 +12,12 @@ import {
   FileText
 } from "../components/Icons";
 
-export default function ScorecardScreen({ summary, onRetryInterview, onTryAnotherRole }) {
+export default function ScorecardScreen({
+  summary,
+  onRetryInterview,
+  onTryAnotherRole,
+  wasVoiceMode = false
+}) {
   if (!summary) return null;
 
   const {
@@ -46,6 +51,17 @@ export default function ScorecardScreen({ summary, onRetryInterview, onTryAnothe
   };
 
   const currentReadiness = readinessConfig[readiness?.toLowerCase()] || readinessConfig.almost;
+
+  // Read out the scorecard summary if voice mode was active
+  useEffect(() => {
+    if (wasVoiceMode && typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      const text = `Congratulations on completing your mock interview! Your overall score is ${overall_score} percent. Your readiness assessment is: ${currentReadiness.label}.`;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.0;
+      window.speechSynthesis.speak(utterance);
+    }
+  }, [wasVoiceMode, overall_score, currentReadiness.label]);
 
   return (
     <div className="screen-container fade-in">

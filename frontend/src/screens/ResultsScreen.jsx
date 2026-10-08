@@ -60,11 +60,17 @@ export default function ResultsScreen({ analysis, onStartInterview, onBack }) {
           <span>Back</span>
         </button>
 
-        <button type="button" className="btn-primary btn-cta-start" onClick={onStartInterview}>
-          <MessageSquare size={16} />
-          <span>{questions.length > 0 ? `Start Mock Interview (${questions.length} Questions)` : "Start Mock Interview"}</span>
-          <ArrowRight size={16} />
-        </button>
+        <div className="results-cta-buttons">
+          <button type="button" className="btn-secondary btn-cta-start" onClick={() => onStartInterview(false)}>
+            <MessageSquare size={16} />
+            <span>Text Interview</span>
+          </button>
+          <button type="button" className="btn-primary btn-cta-start" onClick={() => onStartInterview(true)}>
+            <Sparkles size={16} />
+            <span>🎙 Start Voice Interview ({questions.length || 5} Qs)</span>
+            <ArrowRight size={16} />
+          </button>
+        </div>
       </div>
 
       {/* Hero Overview Card */}
@@ -303,11 +309,17 @@ export default function ResultsScreen({ analysis, onStartInterview, onBack }) {
           <h3>Ready to test your answers in a real interview?</h3>
           <p>Practice answering technical and behavioral questions generated directly from your target JD gaps.</p>
         </div>
-        <button type="button" className="btn-primary btn-cta-large" onClick={onStartInterview}>
-          <MessageSquare size={18} />
-          <span>Start Mock Interview</span>
-          <ArrowRight size={18} />
-        </button>
+        <div className="bottom-cta-actions">
+          <button type="button" className="btn-secondary btn-cta-large" onClick={() => onStartInterview(false)}>
+            <MessageSquare size={18} />
+            <span>Text Mode</span>
+          </button>
+          <button type="button" className="btn-primary btn-cta-large" onClick={() => onStartInterview(true)}>
+            <Sparkles size={18} />
+            <span>🎙 Start Voice Interview</span>
+            <ArrowRight size={18} />
+          </button>
+        </div>
       </div>
     </div>
   );

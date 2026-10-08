@@ -3,6 +3,7 @@ import {
   getMockJobs,
   getMockAnswer,
   getMockSummary,
+  getMockTranscribe,
 } from "./mock";
 
 const RAW_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -186,3 +187,23 @@ export async function getSummary(body) {
     throw err;
   }
 }
+
+/**
+ * POST /api/transcribe (multipart form: "audio" file blob)
+ */
+export async function transcribe(formData) {
+  if (USE_MOCK) {
+    return await getMockTranscribe(formData);
+  }
+  try {
+    const res = await fetchWithTimeout(`${BASE_URL}/api/transcribe`, {
+      method: "POST",
+      body: formData,
+    });
+    return await handleResponse(res);
+  } catch (err) {
+    console.warn("[API] transcribe error:", err.message);
+    throw err;
+  }
+}
+

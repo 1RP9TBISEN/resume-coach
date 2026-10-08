@@ -85,3 +85,13 @@ export async function getMockSummary(body) {
     next_steps: summaryData.next_steps
   };
 }
+
+/**
+ * Returns mock voice transcription after a 1s simulated delay.
+ */
+export async function getMockTranscribe(formData) {
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  return {
+    transcript: "In my previous project, I implemented React Query for optimistic updates and configured custom Axios retry interceptors with exponential backoff to handle intermittent network failures."
+  };
+}

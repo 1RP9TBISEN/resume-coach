@@ -10,9 +10,17 @@ import {
   CheckCircle2,
   AlertCircle,
   Zap,
-  HelpCircle
+  HelpCircle,
+  Mic,
+  MicOff,
+  Volume2,
+  VolumeX,
+  Pause,
+  Play,
+  Check,
 } from "../components/Icons";
 import { FeedbackSkeleton } from "../components/LoadingSkeleton";
+import { useVoiceInterview, isVoiceSupported } from "../hooks/useVoiceInterview";
 
 export default function InterviewScreen({
   questions = [],
@@ -25,12 +33,17 @@ export default function InterviewScreen({
   showColdStartNotice,
   onBackToResults,
   isFinished,
+  initialVoiceMode = false,
+  setErrorMessage,
 }) {
   const [userAnswer, setUserAnswer] = useState("");
   const [showBetterAnswer, setShowBetterAnswer] = useState(false);
+  const [isVoiceMode, setIsVoiceMode] = useState(initialVoiceMode);
   const textareaRef = useRef(null);
 
-  // Defensive fallback question if list is empty
+  const voiceSupported = isVoiceSupported();
+
+  // Fallback question if list is empty
   const defaultQuestion = {
     id: 1,
     question: "Walk me through your most challenging frontend or full-stack project. What architectural decisions did you make?",
@@ -42,15 +55,39 @@ export default function InterviewScreen({
   const currentQ = safeQuestions[currentQuestionIndex] || safeQuestions[0] || defaultQuestion;
   const totalQuestions = safeQuestions.length;
   const progressPercent = Math.min(100, Math.round(((currentQuestionIndex + 1) / totalQuestions) * 100));
+  const isLastQuestion = currentQuestionIndex >= totalQuestions - 1;
 
-  // Reset textarea when question changes
+  // Voice Interview Loop hook
+  const {
+    voiceStatus,
+    audioLevel,
+    transcriptPreview,
+    startQuestionLoop,
+    skipSpeakingAndListen,
+    finishRecordingEarly,
+    togglePause,
+    isPaused,
+    fallbackToTyping,
+  } = useVoiceInterview({
+    currentQuestion: currentQ,
+    isVoiceMode,
+    setIsVoiceMode,
+    onAnswerSubmit,
+    onNextQuestion,
+    isLastQuestion,
+    currentFeedback: feedback,
+    loadingFeedback,
+    setErrorMessage,
+  });
+
+  // Reset textarea & collapse stronger answer on question change
   useEffect(() => {
     setUserAnswer("");
     setShowBetterAnswer(false);
-    if (textareaRef.current) {
+    if (!isVoiceMode && textareaRef.current) {
       textareaRef.current.focus();
     }
-  }, [currentQuestionIndex]);
+  }, [currentQuestionIndex, isVoiceMode]);
 
   const handleKeyDown = (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -72,6 +109,9 @@ export default function InterviewScreen({
 
   const handleSkip = () => {
     if (loadingFeedback) return;
+    if (isVoiceMode) {
+      fallbackToTyping();
+    }
     onSkipQuestion({
       question: currentQ.question,
       targets_gap: currentQ.targets_gap || "",
@@ -79,7 +119,9 @@ export default function InterviewScreen({
     });
   };
 
-  const isLastQuestion = currentQuestionIndex >= totalQuestions - 1;
+  const startVoiceInterview = () => {
+    setIsVoiceMode(true);
+  };
 
   // Type badge styling
   const typeMap = {
@@ -93,7 +135,14 @@ export default function InterviewScreen({
     <div className="screen-container fade-in">
       {/* Top Header & Progress */}
       <div className="interview-top-bar">
-        <button type="button" className="btn-back" onClick={onBackToResults}>
+        <button
+          type="button"
+          className="btn-back"
+          onClick={() => {
+            if (isVoiceMode) fallbackToTyping();
+            onBackToResults();
+          }}
+        >
           <ArrowLeft size={16} />
           <span>Back to Analysis</span>
         </button>
@@ -111,12 +160,111 @@ export default function InterviewScreen({
         </div>
       </div>
 
-      {/* Chat / Interview Area */}
-      <div className="interview-chat-card">
+      {/* Mode Switcher Banner (when not in voice mode) */}
+      {!isVoiceMode && voiceSupported && (
+        <div className="voice-mode-prompt-banner fade-in">
+          <div className="voice-prompt-left">
+            <div className="mic-icon-circle">
+              <Mic size={18} />
+            </div>
+            <div>
+              <strong>Prefer talking out loud?</strong>
+              <p>Practice hands-free with real-time AI speech and voice evaluation.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn-primary btn-start-voice"
+            onClick={startVoiceInterview}
+          >
+            <Mic size={16} />
+            <span>🎙 Start Voice Interview</span>
+          </button>
+        </div>
+      )}
+
+      {/* Main Chat / Interview Card */}
+      <div className={`interview-chat-card ${isVoiceMode ? "voice-card-active" : ""}`}>
+        {/* Voice Mode Header Bar (Active when in Voice Mode) */}
+        {isVoiceMode && (
+          <div className="voice-active-header fade-in">
+            <div className="voice-status-indicator">
+              <span className={`voice-pulse-dot ${voiceStatus}`} />
+              <span className="voice-status-label">
+                {voiceStatus === "speaking" && "🎙 Interviewer speaking… (tap bubble to skip)"}
+                {voiceStatus === "listening" && "🎧 Listening to your answer…"}
+                {voiceStatus === "thinking" && "✨ Transcribing & analyzing response…"}
+                {voiceStatus === "responding" && "🗣 Speaking score & feedback…"}
+                {voiceStatus === "paused" && "⏸ Voice loop paused"}
+                {voiceStatus === "idle" && "🎙 Hands-free Voice Mode ready"}
+              </span>
+            </div>
+
+            {/* Always Visible Voice Controls */}
+            <div className="voice-controls-row">
+              <button
+                type="button"
+                className="btn-voice-control"
+                onClick={togglePause}
+                title={isPaused ? "Resume voice loop" : "Pause voice loop"}
+              >
+                {isPaused ? <Play size={14} /> : <Pause size={14} />}
+                <span>{isPaused ? "Resume" : "Pause"}</span>
+              </button>
+
+              {voiceStatus === "listening" && (
+                <button
+                  type="button"
+                  className="btn-voice-control btn-done"
+                  onClick={finishRecordingEarly}
+                  title="Finish recording now"
+                >
+                  <Check size={14} />
+                  <span>I'm done</span>
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="btn-voice-control btn-switch-type"
+                onClick={() => fallbackToTyping()}
+                title="Switch to typing text"
+              >
+                <MessageSquare size={14} />
+                <span>Switch to typing</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Live Audio Visualizer Wave (Active when Listening in Voice Mode) */}
+        {isVoiceMode && voiceStatus === "listening" && (
+          <div className="mic-visualizer-container fade-in">
+            <div className="mic-pulse-ring" style={{ transform: `scale(${1 + audioLevel * 0.012})` }}>
+              <Mic size={24} className="mic-active-icon" />
+            </div>
+            <div className="audio-meter-bar-track">
+              <div
+                className="audio-meter-bar-fill"
+                style={{ width: `${Math.min(100, audioLevel * 1.5)}%` }}
+              />
+            </div>
+            <span className="mic-listening-hint">
+              Speak your answer clearly. Pausing for 2s will automatically submit.
+            </span>
+          </div>
+        )}
+
         {/* Interviewer Bubble */}
-        <div className="interviewer-bubble fade-in">
+        <div
+          className={`interviewer-bubble fade-in ${voiceStatus === "speaking" ? "bubble-speaking" : ""}`}
+          onClick={skipSpeakingAndListen}
+          role={voiceStatus === "speaking" ? "button" : undefined}
+          title={voiceStatus === "speaking" ? "Tap to skip reading and start speaking" : undefined}
+          tabIndex={voiceStatus === "speaking" ? 0 : undefined}
+        >
           <div className="bubble-avatar">
-            <Sparkles size={20} />
+            {voiceStatus === "speaking" ? <Volume2 size={20} className="pulse-icon" /> : <Sparkles size={20} />}
           </div>
           <div className="bubble-content">
             <div className="bubble-meta">
@@ -127,13 +275,28 @@ export default function InterviewScreen({
                   Targets: <strong>{currentQ.targets_gap}</strong>
                 </span>
               )}
+              {voiceStatus === "speaking" && (
+                <span className="skip-speech-pill">Tap bubble to skip speech ↷</span>
+              )}
             </div>
             <div className="question-text">{currentQ.question}</div>
           </div>
         </div>
 
-        {/* User Input or Answer State */}
-        {!feedback && !loadingFeedback && (
+        {/* User Spoken Transcript Bubble in Voice Mode */}
+        {isVoiceMode && (transcriptPreview || voiceStatus === "thinking") && (
+          <div className="user-spoken-bubble fade-in">
+            <div className="user-bubble-content">
+              <span className="user-bubble-label">🎙 Your Spoken Answer:</span>
+              <p className="user-transcript-text">
+                {transcriptPreview || "Transcribing your voice response…"}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* User Text Input Area (When NOT in Voice Mode) */}
+        {!isVoiceMode && !feedback && !loadingFeedback && (
           <div className="user-answer-container fade-in">
             <div className="user-input-header">
               <span className="user-input-label">Your Response</span>
@@ -268,6 +431,11 @@ export default function InterviewScreen({
 
             {/* Next Question CTA */}
             <div className="feedback-footer">
+              {isVoiceMode && (
+                <span className="voice-auto-advance-note">
+                  🎙 Advancing automatically after voice evaluation…
+                </span>
+              )}
               <button
                 type="button"
                 className="btn-primary btn-next-q"

@@ -58,6 +58,8 @@ export default function App() {
   // Interview sub-state
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [currentFeedback, setCurrentFeedback] = useState(null);
+  const [initialVoiceMode, setInitialVoiceMode] = useState(false);
+  const [wasVoiceMode, setWasVoiceMode] = useState(false);
 
   // Loading, Cold-start timer & Error states
   const [loadingAction, setLoadingAction] = useState(null); // 'analyze' | 'jobs' | 'answer' | 'summary' | null
@@ -168,11 +170,13 @@ export default function App() {
   };
 
   // Start Interview
-  const handleStartInterview = () => {
+  const handleStartInterview = (startInVoice = false) => {
     setCurrentQuestionIndex(0);
     setCurrentFeedback(null);
     setQa([]);
     setSummary(null);
+    setInitialVoiceMode(Boolean(startInVoice));
+    setWasVoiceMode(Boolean(startInVoice));
     setPreviousView("results");
     setCurrentView("interview");
   };
@@ -422,6 +426,8 @@ export default function App() {
                 showColdStartNotice={showColdStartNotice}
                 onBackToResults={() => setCurrentView("results")}
                 isFinished={qa.length >= (analysis?.questions?.length || 5)}
+                initialVoiceMode={initialVoiceMode}
+                setErrorMessage={setErrorMessage}
               />
             )}
           </>
@@ -433,6 +439,7 @@ export default function App() {
             summary={summary}
             onRetryInterview={handleRetryInterview}
             onTryAnotherRole={handleTryAnotherRole}
+            wasVoiceMode={wasVoiceMode}
           />
         )}
       </main>
