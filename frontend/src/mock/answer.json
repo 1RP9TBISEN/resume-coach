@@ -1,0 +1,13 @@
+{
+  "score": 8,
+  "strengths": [
+    "Used the STAR structure effectively to contextualize the technical challenge",
+    "Accurately identified core React lifecycle and asynchronous error recovery techniques",
+    "Demonstrated good awareness of user-facing feedback during network latency"
+  ],
+  "improvements": [
+    "Could incorporate specific metrics like latency reduction percentage or p99 response times",
+    "Mention automated logging or alerting tools (e.g. Sentry, Datadog) used to trace runtime errors"
+  ],
+  "better_answer": "When dealing with intermittent API failures and latency spikes in React, I implement an Axios retry interceptor with exponential backoff and jitter for idempotent endpoints. On the UI side, I combine React Query's stale-while-revalidate caching with React Error Boundaries and Skeleton placeholders so the user interface never freezes. In our internship project, this setup decreased blank error screens by 40% during peak traffic bursts."
+}

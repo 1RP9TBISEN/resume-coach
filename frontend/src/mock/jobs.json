@@ -1,0 +1,55 @@
+{
+  "resume_text": "Arjun Sharma | B.Tech CSE NIT Karnataka | Skills: React, JavaScript, Python, FastAPI, Tailwind CSS, Git | Projects: DevFlow (Collaborative code editor), Campus Placement Platform | Experience: Frontend Developer Intern at TechStart Labs",
+  "roles": [
+    {
+      "title": "Frontend Developer Intern",
+      "fit_score": 92,
+      "why": "Excellent match with core React, JavaScript, modern CSS, and component design patterns.",
+      "matched_skills": ["React.js", "JavaScript (ES6+)", "HTML5 & CSS3", "REST APIs", "Git"],
+      "missing_skills": ["Next.js", "Jest / RTL"],
+      "level": "intern",
+      "sample_jd": "We are looking for an ambitious Frontend Developer Intern at a hyper-growth Indian startup. You will collaborate with product designers and fullstack engineers to create intuitive, blazing-fast web experiences using React and modern CSS. You will integrate REST APIs, maintain responsive layout fidelity, and participate in peer code reviews.",
+      "search_query": "Frontend Developer Intern"
+    },
+    {
+      "title": "Junior Full-Stack Engineer (React + Python)",
+      "fit_score": 85,
+      "why": "Strong project portfolio demonstrating end-to-end web apps with FastAPI and React.",
+      "matched_skills": ["React.js", "Python", "FastAPI", "SQLite/Postgres", "REST APIs"],
+      "missing_skills": ["Docker", "Redis", "CI/CD"],
+      "level": "junior",
+      "sample_jd": "Seeking a Junior Full-Stack Engineer to build customer-facing dashboards and microservices. Must have proven hands-on experience with React frontend and Python (FastAPI/Django) backend, schema design, and asynchronous API architectures.",
+      "search_query": "Junior Full Stack Engineer React Python"
+    },
+    {
+      "title": "Junior UI/UX Frontend Developer",
+      "fit_score": 82,
+      "why": "Demonstrated flair for clean responsive UI, CSS design systems, and rapid prototyping.",
+      "matched_skills": ["React.js", "CSS3 / Flexbox / Grid", "Figma to Code", "Responsive Design"],
+      "missing_skills": ["Tailwind Plugins", "Storybook", "Web Accessibility (WCAG)"],
+      "level": "junior",
+      "sample_jd": "Join our product design engineering squad. You will translate Figma mockups into reusable React components, author fluid animations, and ensure cross-browser pixel precision across mobile and desktop devices.",
+      "search_query": "Junior UI UX Frontend Developer"
+    },
+    {
+      "title": "React Native Mobile App Intern",
+      "fit_score": 78,
+      "why": "Strong React fundamentals and component state lifecycle map directly to React Native development.",
+      "matched_skills": ["React", "JavaScript (ES6+)", "Context API", "Mobile-First Thinking"],
+      "missing_skills": ["React Native CLI", "Native Bridge / Expo", "App Store Deployment"],
+      "level": "intern",
+      "sample_jd": "Looking for a passionate React Native Intern to build slick iOS and Android mobile features. Work alongside mobile leads to craft 60fps animations, integrate device hardware APIs, and streamline offline caching.",
+      "search_query": "React Native Mobile Intern"
+    },
+    {
+      "title": "Software Development Engineer - Frontend (SDE-1)",
+      "fit_score": 74,
+      "why": "Solid algorithmic foundations and modern web architecture basics; high potential for fast ramp-up.",
+      "matched_skills": ["JavaScript", "Data Structures", "React.js", "Web Performance"],
+      "missing_skills": ["TypeScript Strict Mode", "Micro-frontends", "Cloudflare / AWS"],
+      "level": "junior",
+      "sample_jd": "SDE-1 Frontend position at leading Indian fintech/e-commerce unicorn. You will build highly scalable user journeys serving millions of daily requests with strict uptime, sub-second load times, and rigorous automated testing.",
+      "search_query": "Frontend SDE 1"
+    }
+  ]
+}
