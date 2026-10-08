@@ -280,3 +280,75 @@ def transcribe(audio: Optional[UploadFile] = File(None)):
     except Exception as e:
         logger.exception(f"Groq STT failed: {e}")
         raise HTTPException(502, "Voice is busy right now, please retry in a few seconds.")
+
+class SpeakRequest(BaseModel):
+    text: str
+
+@app.post("/api/speak")
+def speak(req: SpeakRequest):
+    if not (1 <= len(req.text) <= 600):
+        raise HTTPException(400, "Text must be between 1 and 600 characters")
+        
+    from llm import get_groq_client
+    import wave
+    import re
+    
+    groq_client = get_groq_client()
+    if not groq_client:
+        raise HTTPException(503, "Voice is unavailable")
+        
+    text = req.text.strip()
+    sentences = re.split(r'(?<=[.!?]) +', text)
+    chunks = []
+    curr = ""
+    for s in sentences:
+        if len(curr) + len(s) + 1 <= 200:
+            curr += (" " + s if curr else s)
+        else:
+            if curr:
+                chunks.append(curr)
+            while len(s) > 200:
+                chunks.append(s[:200])
+                s = s[200:]
+            curr = s
+    if curr:
+        chunks.append(curr)
+        
+    try:
+        model = os.getenv("GROQ_TTS_MODEL", "canopylabs/orpheus-v1-english")
+        voice = os.getenv("GROQ_TTS_VOICE", "Autumn")
+        
+        wav_chunks = []
+        for chunk in chunks:
+            if not chunk.strip(): continue
+            response = groq_client.audio.speech.create(
+                model=model,
+                voice=voice,
+                input=chunk,
+                response_format="wav"
+            )
+            wav_chunks.append(response.content)
+            
+        if not wav_chunks:
+            raise HTTPException(400, "Empty content")
+            
+        if len(wav_chunks) == 1:
+            final_audio = wav_chunks[0]
+        else:
+            try:
+                out_io = io.BytesIO()
+                with wave.open(out_io, 'wb') as wav_out:
+                    for i, wav_bytes in enumerate(wav_chunks):
+                        with wave.open(io.BytesIO(wav_bytes), 'rb') as wav_in:
+                            if i == 0:
+                                wav_out.setparams(wav_in.getparams())
+                            wav_out.writeframes(wav_in.readframes(wav_in.getnframes()))
+                final_audio = out_io.getvalue()
+            except Exception as concat_e:
+                logger.warning(f"Audio concatenation failed, returning first chunk: {concat_e}")
+                final_audio = wav_chunks[0]
+                
+        return Response(content=final_audio, media_type="audio/wav")
+    except Exception as e:
+        logger.exception(f"Groq TTS failed: {e}")
+        raise HTTPException(502, "Voice is busy right now, please retry in a few seconds.")
